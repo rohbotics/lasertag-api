@@ -91,6 +91,19 @@ def list_teams():
             results = cur.fetchall()
             cur.close()
             return json.dumps(results, indent=4) + '\r\n'
+        if request.method == 'POST':
+            try:
+                team_name = request.json['name']
+                team_type = request.json['type']
+            except:
+                return util.error_message('Must provide both a name and a type for the team', 412)
+
+            cur.execute('INSERT INTO teams (name, type) VALUES (%s, %s) RETURNING id;', (team_name, team_type))
+            team_id = cur.fetchone()[0]
+            cur.execute('INSERT INTO team_users (team, member) VALUES (%s, %s);', (team_id, current_user_id))
+            db.commit()
+
+            return json.dumps({'location': '/teams/%s' % util.id_to_string(team_id)}) + '\r\n'
 
 @app.route('/games')
 @jwt_required
@@ -99,7 +112,9 @@ def list_games():
     current_user_id = util.id_from_string(current_user['id'])
     
     with get_db_and_cursor() as (db, cur):
-        cur.execute('SELECT * FROM games JOIN game_teams ON game_teams.game = games.id JOIN team_users ON team_users.team = game_teams.team WHERE team_users.member = %s;', (current_user_id,))
-        results = cur.fetchall()
-        return json.dumps(results, indent=4) + '\r\n'
+        if request.method == 'GET':
+            cur.execute('SELECT * FROM games JOIN game_teams ON game_teams.game = games.id JOIN team_users ON team_users.team = game_teams.team WHERE team_users.member = %s;', (current_user_id,))
+            results = cur.fetchall()
+            return json.dumps(results, indent=4) + '\r\n'
+
 
