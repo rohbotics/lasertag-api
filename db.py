@@ -44,3 +44,4 @@ def get_db_and_cursor():
         cursor.close()
         c['postgreSQL_pool'].putconn(connection)
 
+

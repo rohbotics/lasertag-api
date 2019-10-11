@@ -5,6 +5,7 @@ import bcrypt
 from functools import wraps
 import psycopg2
 import psycopg2.pool
+from jsonschema import validate
 
 from flask import Flask
 from flask import request
@@ -29,12 +30,22 @@ init_db(app)
 
 @app.route('/auth/login', methods=['POST'])
 def login():
-    content = request.json
+    schema = {
+            "type": "object",
+            "properties": {
+                "email" : {"type": "string"},
+                "password" : {"type": "string"}
+            },
+            "required" : ["email", "password"],
+            "additionalProperties": "false"
+    }
     try:
-        email = content["email"]
-        password = content["password"]
+        validate(instance=request.json, schema=schema)
     except:
-        return "Must have both email and password in JSON"
+        return util.error_message("JSON doesn't match accepted schema", 412)
+
+    email = request.json["email"]
+    password = request.json["password"]
 
     with get_db_and_cursor() as (db, cur):
         cur.execute('SELECT id, password from users WHERE email = %s;', (email,))
@@ -54,13 +65,22 @@ def login():
 
 @app.route('/auth/register', methods=['POST'])
 def register():
-    content = request.json
+    schema = {
+            "type": "object",
+            "properties": {
+                "email" : {"type": "string"},
+                "password" : {"type": "string"}
+            },
+            "required" : ["email", "password"],
+            "additionalProperties": "false"
+    }
     try:
-        email = content["email"]
-        password = content["password"]
+        validate(instance=request.json, schema=schema)
     except:
-        return "Must have both email and password in JSON"
+        return util.error_message("JSON doesn't match accepted schema", 412)
 
+    email = request.json["email"]
+    password = request.json["password"]
     hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('ascii')
     
     with get_db_and_cursor() as (db, cur):
@@ -92,12 +112,22 @@ def list_teams():
             cur.close()
             return json.dumps(results, indent=4) + '\r\n'
         if request.method == 'POST':
+            schema = {
+                    "type": "object",
+                    "properties": {
+                        "name" : {"type": "string"},
+                        "type" : {"type": "string"}
+                    },
+                    "required" : ["name", "type"],
+                    "additionalProperties": "false"
+            }
             try:
-                team_name = request.json['name']
-                team_type = request.json['type']
+                validate(instance=request.json, schema=schema)
             except:
-                return util.error_message('Must provide both a name and a type for the team', 412)
+                return util.error_message("JSON doesn't match accepted schema", 412)
 
+            team_name = request.json['name']
+            team_type = request.json['type']
             cur.execute('INSERT INTO teams (name, type) VALUES (%s, %s) RETURNING id;', (team_name, team_type))
             team_id = cur.fetchone()[0]
             cur.execute('INSERT INTO team_users (team, member) VALUES (%s, %s);', (team_id, current_user_id))
