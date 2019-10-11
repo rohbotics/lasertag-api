@@ -1,8 +1,9 @@
+import sys
 import psycopg2
 import psycopg2.pool, psycopg2.extras
 from contextlib import contextmanager
-
 from datetime import datetime
+
 from flask import current_app, g
 
 def init_db(app):
@@ -33,6 +34,9 @@ def get_db_and_cursor():
         g.db = connection
         g.db_cursor = cursor
         yield (connection, cursor)
+    except:
+        print("Caught exception, doing rollback of database")
+        db.rollback()
     finally:
         g.pop('db', None)
         g.pop('db_cursor', None)

@@ -64,9 +64,6 @@ def register():
     hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('ascii')
     
     with get_db_and_cursor() as (db, cur):
-        # Force a commit of the current state to allow rollbacks
-        db.commit()
-
         try:
             cur.execute('INSERT INTO users (email, password) VALUES (%s, %s);', (email, hashed_password))
         except psycopg2.errors.UniqueViolation:
