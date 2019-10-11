@@ -36,7 +36,8 @@ def get_db_and_cursor():
         yield (connection, cursor)
     except:
         print("Caught exception, doing rollback of database")
-        db.rollback()
+        connection.rollback()
+        raise
     finally:
         g.pop('db', None)
         g.pop('db_cursor', None)
